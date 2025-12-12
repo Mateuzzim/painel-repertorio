@@ -37,6 +37,9 @@
                 <button type="button" onclick="resetTimer()">↺</button>
             </div>
         </div>
+
+        <!-- JUMP TO BLOCK (MODO PALCO) -->
+        <div id="block-jumper" class="block-jumper"></div>
         
         <div class="search-container">
             <input type="search" id="search-input" class="search-input" placeholder="BUSCAR MÚSICA, ID OU RITMO..." oninput="filterRepertoire()">
@@ -295,9 +298,12 @@
     <div id="remote-modal" class="modal-overlay">
         <div class="modal-content" style="text-align: center; max-width: 400px;">
             <h2 style="color:var(--primary); margin-bottom:10px;">CONTROLE REMOTO</h2>
-            <p style="color:#ccc; font-size:0.9rem; margin-bottom:20px;">Escaneie com o celular para controlar o palco.</p>
+            <p style="color:#ccc; font-size:0.9rem; margin-bottom:20px;">Escaneie com o celular ou clique no link abaixo.</p>
             
             <div id="qrcode" style="display:flex; justify-content:center; margin-bottom:20px; background:#fff; padding:10px; border-radius:8px;"></div>
+            
+            <a id="remote-link" href="#" target="_blank" style="display: block; margin-bottom: 10px; color: var(--secondary); word-break: break-all; text-decoration: underline;"></a>
+            <button type="button" class="action-btn" style="margin-bottom: 20px; font-size: 0.8rem;" onclick="copyRemoteLink()">📋 COPIAR LINK</button>
             
             <div id="remote-status" style="color:var(--secondary); font-family:'Roboto Mono'; font-size:0.8rem; margin-bottom:15px;">AGUARDANDO CONEXÃO...</div>
             
@@ -322,11 +328,20 @@
                 <input type="text" id="remote-msg-input" placeholder="AVISO PARA O PALCO..." maxlength="30">
                 <button class="remote-btn" onclick="sendRemoteMessage()">ENVIAR</button>
             </div>
+            <button class="remote-btn" onclick="toggleRemoteLock()" style="grid-column: span 2;">🔒 BLOQUEAR TELA</button>
+            <div id="remote-block-jumper" class="remote-block-jumper" style="grid-column: span 2;">
+            </div>
         </div>
         <div class="remote-footer-bar">
             <div id="remote-feedback">CONECTADO</div>
             <div id="remote-battery"></div>
         </div>
+    </div>
+
+    <!-- TELA DE BLOQUEIO DO CONTROLE REMOTO -->
+    <div id="remote-lock-screen" style="display:none;">
+        <div class="lock-icon">LOCKED</div>
+        <button class="unlock-btn" onclick="toggleRemoteLock()">PRESSIONE PARA DESBLOQUEAR</button>
     </div>
 
     <script src="script.js"></script>

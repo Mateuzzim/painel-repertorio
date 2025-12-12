@@ -274,6 +274,7 @@ function renderSetlist() {
 
     // Reaplicar filtro se houver texto na busca
     filterRepertoire();
+    renderBlockJumper();
 }
 
 // FUNÇÕES DO EDITOR
@@ -1680,6 +1681,84 @@ function toggleMobileMenu() {
     btn.textContent = controls.classList.contains('active') ? '✕' : '☰';
 }
 
+function renderBlockJumper() {
+    const jumperContainer = document.getElementById('block-jumper');
+    const remoteJumperContainer = document.getElementById('remote-block-jumper');
+
+    if (jumperContainer) jumperContainer.innerHTML = '';
+    if (remoteJumperContainer) remoteJumperContainer.innerHTML = '';
+
+    setlistData.slice(0, 20).forEach((block, index) => {
+        const blockId = block.id || `B${index + 1}`;
+        // Botão para o Modo Palco (PC)
+        if (jumperContainer) {
+            const btn = document.createElement('button');
+            btn.className = 'block-jumper-btn';
+            btn.dataset.index = index;
+            btn.textContent = blockId;
+            btn.onclick = () => jumpToBlock(index);
+            jumperContainer.appendChild(btn);
+        }
+
+        // Botão para o Controle Remoto (Celular)
+        if (remoteJumperContainer) {
+            const remoteBtn = document.createElement('button');
+            remoteBtn.className = 'remote-btn'; // Reutiliza o estilo
+            remoteBtn.dataset.index = index;
+            remoteBtn.textContent = blockId;
+            remoteBtn.onclick = () => sendRemote('jump_to_block', { index });
+            remoteJumperContainer.appendChild(remoteBtn);
+        }
+    });
+}
+
+function jumpToBlock(index) {
+    const blockElements = document.querySelectorAll('.block-container');
+    if (blockElements[index]) {
+        const headerHeight = document.querySelector('header')?.getBoundingClientRect().height || 0;
+        const y = blockElements[index].getBoundingClientRect().top + window.scrollY - (document.body.classList.contains('presentation-mode') ? 10 : headerHeight + 10);
+        window.scrollTo({ top: y, behavior: 'smooth' });
+    }
+}
+
+let lastActiveBlockIndex = -1;
+
+window.addEventListener('scroll', () => {
+    highlightActiveBlock();
+});
+
+function highlightActiveBlock() {
+    const blocks = document.querySelectorAll('.block-container');
+    const headerHeight = document.querySelector('header')?.getBoundingClientRect().height || 0;
+    let activeIndex = -1;
+    let minDistance = Infinity;
+
+    blocks.forEach((block, index) => {
+        const rect = block.getBoundingClientRect();
+        // Verifica a distância do topo do bloco em relação a um ponto de leitura (topo da tela + margem)
+        const distance = Math.abs(rect.top - headerHeight - 50);
+        
+        if (distance < minDistance) {
+            minDistance = distance;
+            activeIndex = index;
+        }
+    });
+
+    if (activeIndex !== -1 && activeIndex !== lastActiveBlockIndex) {
+        lastActiveBlockIndex = activeIndex;
+        
+        // Atualiza botões locais (Modo Palco)
+        document.querySelectorAll('.block-jumper-btn').forEach(btn => {
+            btn.classList.toggle('active', parseInt(btn.dataset.index) === activeIndex);
+        });
+
+        // Envia atualização para o controle remoto (se conectado como host)
+        if (conn && conn.open) {
+            conn.send({ action: 'highlight_block', payload: { index: activeIndex } });
+        }
+    }
+}
+
 // =========================================
 // LÓGICA DE CONTROLE REMOTO (PEERJS)
 // =========================================
@@ -1706,6 +1785,11 @@ function initRemoteSystem() {
                 document.getElementById('remote-feedback').style.color = "#0f0";
             });
             conn.on('error', (err) => alert("Erro na conexão: " + err));
+            conn.on('data', (data) => {
+                if (data.action === 'highlight_block') {
+                    updateRemoteHighlight(data.payload.index);
+                }
+            });
         });
         initRemoteBattery();
     }
@@ -1716,21 +1800,31 @@ function openRemoteConnectModal() {
     const modal = document.getElementById('remote-modal');
     const qrContainer = document.getElementById('qrcode');
     const status = document.getElementById('remote-status');
+    const remoteLink = document.getElementById('remote-link');
     
     modal.style.display = 'flex';
     qrContainer.innerHTML = '';
+    remoteLink.textContent = '';
+    remoteLink.href = '#';
     status.textContent = "GERANDO ID...";
+    status.style.color = 'var(--secondary)';
 
-    if (!peer) {
+    const setupElements = (id) => {
+        const url = `${window.location.href.split('?')[0]}?remote=${id}`;
+        new QRCode(qrContainer, {
+            text: url,
+            width: 200,
+            height: 200
+        });
+        remoteLink.href = url;
+        remoteLink.textContent = "Abrir Controle Remoto em Nova Aba";
+        status.textContent = "PRONTO PARA CONEXÃO";
+    };
+
+    if (!peer || peer.destroyed) {
         peer = new Peer();
         peer.on('open', (id) => {
-            const url = `${window.location.href.split('?')[0]}?remote=${id}`;
-            new QRCode(qrContainer, {
-                text: url,
-                width: 200,
-                height: 200
-            });
-            status.textContent = "PRONTO PARA CONEXÃO";
+            setupElements(id);
         });
 
         peer.on('connection', (c) => {
@@ -1741,10 +1835,20 @@ function openRemoteConnectModal() {
         });
     } else {
         // Se já existe peer, apenas regenera o QR com o ID atual
-        const url = `${window.location.href.split('?')[0]}?remote=${peer.id}`;
-        new QRCode(qrContainer, { text: url, width: 200, height: 200 });
-        status.textContent = "AGUARDANDO...";
+        setupElements(peer.id);
     }
+}
+
+function copyRemoteLink() {
+    const linkElement = document.getElementById('remote-link');
+    if (linkElement.getAttribute('href') === '#') return alert("Aguarde a geração do link...");
+    
+    navigator.clipboard.writeText(linkElement.href).then(() => {
+        alert("Link copiado para a área de transferência!");
+    }).catch(err => {
+        console.error('Erro ao copiar: ', err);
+        alert("Erro ao copiar link.");
+    });
 }
 
 function setupReceiver() {
@@ -1759,15 +1863,16 @@ function setupReceiver() {
             case 'next_block': scrollBlock(1); break;
             case 'prev_block': scrollBlock(-1); break;
             case 'blackout': changeTheme('theme-black'); break;
-            case 'message': showRemoteMessage(data.text); break;
+            case 'message': showRemoteMessage(data.payload); break;
             case 'reset_timer': resetTimer(); break;
+            case 'jump_to_block': jumpToBlock(data.payload.index); break;
         }
     });
 }
 
 function sendRemote(action, payload = null) {
     if (conn && conn.open) {
-        conn.send({ action: action, text: payload });
+        conn.send({ action, payload });
         // Feedback visual de clique
         navigator.vibrate(50); 
     } else {
@@ -1826,5 +1931,25 @@ function updateBatteryUI(battery) {
     }
 }
 
+function updateRemoteHighlight(index) {
+    const container = document.getElementById('remote-block-jumper');
+    if (!container) return;
+    const buttons = container.querySelectorAll('button');
+    buttons.forEach((btn, i) => {
+        btn.classList.toggle('active', i === index);
+    });
+}
+
 // Inicializa verificação remota
 initRemoteSystem();
+
+function toggleRemoteLock() {
+    const lockScreen = document.getElementById('remote-lock-screen');
+    if (!lockScreen) return;
+
+    if (lockScreen.style.display === 'none') {
+        lockScreen.style.display = 'flex';
+    } else {
+        lockScreen.style.display = 'none';
+    }
+}

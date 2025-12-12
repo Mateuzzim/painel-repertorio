@@ -720,9 +720,9 @@ body.presentation-mode .block-container::before {
 
 /* Ajustes de Layout e Tipografia para Palco */
 body.presentation-mode .container {
-    width: 100%;
+    width: 95%;
     max-width: 100%;
-    margin: 0;
+    margin: 0 auto;
     padding: 0;
     display: block;
 }
@@ -730,8 +730,6 @@ body.presentation-mode .container {
 body.presentation-mode .block-container {
     width: 100%;
     border: 2px solid var(--primary);
-    border-left: none;
-    border-right: none;
     border-radius: 0;
     margin-bottom: 50px;
     background: #000;
@@ -1473,3 +1471,87 @@ body.panic-active #panic-overlay {
     font-weight: bold;
     font-size: 0.9rem;
 }
+
+/* =========================================
+   NAVEGAÇÃO RÁPIDA DE BLOCOS (JUMPER)
+   ========================================= */
+
+.block-jumper {
+    display: none; /* Oculto por padrão */
+    width: 100%;
+    padding: 5px;
+    justify-content: center;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 5px;
+}
+
+body.presentation-mode .block-jumper {
+    display: flex;
+}
+
+.block-jumper-btn {
+    background: rgba(0,0,0,0.8);
+    border: 1px solid var(--primary);
+    color: var(--primary);
+    font-family: 'Oxanium';
+    font-weight: bold;
+    font-size: 0.7rem;
+    padding: 4px 8px;
+    cursor: pointer;
+    transition: 0.2s;
+}
+.block-jumper-btn:hover { background: var(--primary); color: #000; }
+.block-jumper-btn.active { background: var(--primary); color: #000; box-shadow: 0 0 10px var(--primary); transform: scale(1.1); z-index: 1; }
+
+/* =========================================
+   TELA DE BLOQUEIO (CONTROLE REMOTO)
+   ========================================= */
+
+#remote-lock-screen {
+    position: fixed;
+    top: 0; left: 0; width: 100%; height: 100%;
+    background: #000;
+    z-index: 10001; /* Acima da interface remota */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 40px;
+}
+
+.lock-icon {
+    font-size: 8rem;
+    color: #222;
+    font-family: 'Oxanium';
+    font-weight: 800;
+    text-shadow: 0 0 10px #111;
+    user-select: none;
+}
+
+.unlock-btn {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+    padding: 20px 40px;
+    border-radius: 50px;
+    font-family: 'Oxanium';
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    animation: btn-pulse 3s infinite;
+}
+
+.remote-block-jumper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    justify-content: center;
+    margin-top: 10px;
+}
+.remote-block-jumper .remote-btn {
+    font-size: 0.8rem;
+    padding: 8px;
+    min-width: 50px;
+}
+.remote-block-jumper .remote-btn.active { background: var(--primary); color: #000; box-shadow: 0 0 10px var(--primary); border-color: #fff; }
