@@ -1453,9 +1453,23 @@ body.panic-active #panic-overlay {
     font-family: 'Oxanium';
 }
 
-#remote-feedback {
-    text-align: center;
-    color: #555;
+.remote-footer-bar {
     margin-top: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-top: 1px solid #333;
+    padding-top: 10px;
+}
+
+#remote-feedback {
+    color: #555;
     font-family: 'Roboto Mono';
+}
+
+#remote-battery {
+    color: var(--primary);
+    font-family: 'Oxanium';
+    font-weight: bold;
+    font-size: 0.9rem;
 }

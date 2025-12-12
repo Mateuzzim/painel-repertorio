@@ -1707,6 +1707,7 @@ function initRemoteSystem() {
             });
             conn.on('error', (err) => alert("Erro na conexão: " + err));
         });
+        initRemoteBattery();
     }
 }
 
@@ -1801,6 +1802,28 @@ function scrollBlock(direction) {
         top: direction * window.innerHeight * 0.8,
         behavior: 'smooth'
     });
+}
+
+function initRemoteBattery() {
+    if ('getBattery' in navigator) {
+        navigator.getBattery().then(function(battery) {
+            updateBatteryUI(battery);
+            battery.addEventListener('levelchange', function() { updateBatteryUI(battery); });
+            battery.addEventListener('chargingchange', function() { updateBatteryUI(battery); });
+        });
+    }
+}
+
+function updateBatteryUI(battery) {
+    const el = document.getElementById('remote-battery');
+    if(el) {
+        const level = Math.round(battery.level * 100);
+        const charging = battery.charging ? '⚡' : '';
+        el.textContent = `🔋 ${level}% ${charging}`;
+        
+        if(level <= 20 && !battery.charging) el.style.color = 'red';
+        else el.style.color = 'var(--primary)';
+    }
 }
 
 // Inicializa verificação remota
