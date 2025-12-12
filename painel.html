@@ -14,7 +14,7 @@
         // Se for modo remoto (celular), pula a autenticação
         const urlParams = new URLSearchParams(window.location.search);
         if (!urlParams.has('remote') && localStorage.getItem('isAuthenticated') !== 'true') {
-            window.location.href = 'login.html';
+            window.location.href = 'index.html';
         }
     </script>
 </head>
