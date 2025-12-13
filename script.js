@@ -49,6 +49,7 @@ let currentSetlistId = 'default';
 let isSelectionMode = false;
 let editingIndex = -1;
 let currentEditingSong = null;
+let isDraggingBlock = false;
 
 // UNDO/REDO LOGIC
 let historyStack = [];
@@ -84,11 +85,13 @@ function renderSetlist() {
     setlistData.forEach((block, index) => { // Criação do Bloco
         const blockDiv = document.createElement('div');
         blockDiv.className = 'block-container';
+        if (block.collapsed) blockDiv.classList.add('collapsed');
         blockDiv.draggable = true;
         blockDiv.dataset.originalIndex = index;
 
         // Eventos de Drag and Drop do Bloco
         blockDiv.addEventListener('dragstart', (e) => {
+            isDraggingBlock = true;
             // Evita arrastar se clicar nos botões
             if (e.target.tagName === 'BUTTON' || e.target.closest('button')) {
                 e.preventDefault();
@@ -99,6 +102,7 @@ function renderSetlist() {
 
         blockDiv.addEventListener('dragend', () => {
             blockDiv.classList.remove('dragging-block');
+            setTimeout(() => { isDraggingBlock = false; }, 50);
             reorderBlocks();
         });
 
@@ -114,14 +118,19 @@ function renderSetlist() {
         
         const toggleBtn = document.createElement('button');
         toggleBtn.className = 'control-btn btn-toggle';
-        toggleBtn.textContent = '-';
+        toggleBtn.textContent = block.collapsed ? '+' : '-';
         toggleBtn.onclick = () => {
+            block.collapsed = !block.collapsed;
+            saveData();
             blockDiv.classList.toggle('collapsed');
             toggleBtn.textContent = blockDiv.classList.contains('collapsed') ? '+' : '-';
         };
 
         // Expande/Recolhe ao clicar no título
         titleDiv.onclick = () => {
+            if (isDraggingBlock) return;
+            block.collapsed = !block.collapsed;
+            saveData();
             blockDiv.classList.toggle('collapsed');
             toggleBtn.textContent = blockDiv.classList.contains('collapsed') ? '+' : '-';
         };
@@ -262,9 +271,20 @@ function renderSetlist() {
         footerDiv.textContent = `TOTAL FAIXAS: ${block.songs.length} // END OF DATA`;
 
         // Juntar tudo
+        // Wrapper para animação suave (Accordion)
+        const contentWrapper = document.createElement('div');
+        contentWrapper.className = 'block-content-wrapper';
+        const contentInner = document.createElement('div');
+        contentInner.className = 'block-content-inner';
+        
+        contentInner.appendChild(listUl);
+        contentInner.appendChild(footerDiv);
+        contentWrapper.appendChild(contentInner);
+
         blockDiv.appendChild(headerDiv);
         blockDiv.appendChild(listUl);
         blockDiv.appendChild(footerDiv);
+        blockDiv.appendChild(contentWrapper);
         container.appendChild(blockDiv);
     });
 
@@ -283,19 +303,13 @@ const songsInputs = document.getElementById('songs-inputs');
 
 function toggleAllBlocks() {
     const btn = document.getElementById('btn-toggle-all');
-    const blocks = document.querySelectorAll('.block-container');
     const isCollapsing = btn.textContent.includes('RECOLHER');
 
-    blocks.forEach(block => {
-        const toggleBtn = block.querySelector('.btn-toggle');
-        if (isCollapsing) {
-            block.classList.add('collapsed');
-            if (toggleBtn) toggleBtn.textContent = '+';
-        } else {
-            block.classList.remove('collapsed');
-            if (toggleBtn) toggleBtn.textContent = '-';
-        }
+    setlistData.forEach(block => {
+        block.collapsed = isCollapsing;
     });
+    saveData();
+    renderSetlist();
 
     btn.textContent = isCollapsing ? 'EXPANDIR TODOS' : 'RECOLHER TODOS';
 }
@@ -431,6 +445,17 @@ function openLyricsModal(song) {
     }
     
     modal.style.display = 'flex';
+
+    // ENVIAR LETRA PARA O CONTROLE REMOTO (SE CONECTADO)
+    if (conn && conn.open) {
+        conn.send({ 
+            action: 'sync_lyrics', 
+            payload: { 
+                title: song.title, 
+                lyrics: song.lyrics || '(Sem letra cadastrada)' 
+            } 
+        });
+    }
 }
 
 function closeLyricsModal() {
@@ -475,6 +500,16 @@ function adjustLyricsFontSize(change) {
     input.style.fontSize = `${newSize}px`;
 }
 
+function syncLyricsSpeed() {
+    const speedInput = document.getElementById('lyrics-scroll-speed');
+    if (isLyricsScrolling && conn && conn.open) {
+        conn.send({ 
+            action: 'lyrics_scroll_sync', 
+            payload: { active: true, speed: parseFloat(speedInput.value) } 
+        });
+    }
+}
+
 let lyricsScrollInterval;
 let isLyricsScrolling = false;
 let lyricsScrollAccumulator = 0;
@@ -492,6 +527,14 @@ function toggleLyricsScroll() {
         btn.textContent = '⏸ PAUSAR';
         btn.style.background = 'var(--primary)';
         btn.style.color = '#000';
+
+        let speed = speedInput ? parseFloat(speedInput.value) : 3;
+        if (conn && conn.open) {
+            conn.send({ 
+                action: 'lyrics_scroll_sync', 
+                payload: { active: true, speed: speed } 
+            });
+        }
         
         function scroll() {
             if (!isLyricsScrolling) return;
@@ -519,6 +562,12 @@ function stopLyricsScroll() {
         btn.textContent = '▶ SCROLL';
         btn.style.background = '';
         btn.style.color = '';
+    }
+    if (conn && conn.open) {
+        conn.send({ 
+            action: 'lyrics_scroll_sync', 
+            payload: { active: false } 
+        });
     }
 }
 
@@ -905,10 +954,16 @@ function toggleStageMode() {
     const btn = document.getElementById('btn-stage-mode');
     if (document.body.classList.contains('presentation-mode')) {
         btn.textContent = 'SAIR DO PALCO';
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(err => console.log(err));
+        }
     } else {
         btn.textContent = 'MODO PALCO';
         stopAutoScroll(); // Para o scroll ao sair do modo palco
         document.getElementById('btn-scroll-toggle').textContent = '▶';
+        if (document.exitFullscreen && document.fullscreenElement) {
+            document.exitFullscreen().catch(err => console.log(err));
+        }
     }
 }
 
@@ -1400,12 +1455,33 @@ loadTimerState();
 
 // KEYBOARD SHORTCUTS
 document.addEventListener('keydown', (e) => {
+    // 1. ESC para fechar qualquer modal aberto (Prioridade Máxima)
+    if (e.code === 'Escape') {
+        const openModal = [...document.querySelectorAll('.modal-overlay')].find(m => m.style.display === 'flex');
+        if (openModal) {
+            e.preventDefault();
+            if (openModal.id === 'lyrics-modal') closeLyricsModal();
+            else if (openModal.id === 'config-modal') closeConfigModal();
+            else if (openModal.id === 'edit-modal') closeModal();
+            else if (openModal.id === 'key-modal') closeKeyModal();
+            else if (openModal.id === 'import-modal') closeImportModal();
+            else openModal.style.display = 'none'; // remote-modal e outros genéricos
+            return;
+        }
+    }
+
     // Ignora se estiver interagindo com inputs
     if (['INPUT', 'TEXTAREA', 'SELECT'].includes(e.target.tagName)) return;
 
     if (e.code === 'Space') {
         e.preventDefault(); // Previne rolagem padrão
         toggleVisibleBlock();
+    }
+
+    // Atalho para Modo Palco (F ou F11)
+    if (e.code === 'KeyF' || e.code === 'F11') {
+        e.preventDefault();
+        toggleStageMode();
     }
     
     // Undo/Redo Shortcuts
@@ -1456,6 +1532,12 @@ function toggleVisibleBlock() {
     if (activeBlock) {
         const btn = activeBlock.querySelector('.btn-toggle');
         if (btn) {
+            const index = parseInt(activeBlock.dataset.originalIndex);
+            if (setlistData[index]) {
+                setlistData[index].collapsed = !setlistData[index].collapsed;
+                saveData();
+            }
+            
             activeBlock.classList.toggle('collapsed');
             btn.textContent = activeBlock.classList.contains('collapsed') ? '+' : '-';
             
@@ -1716,7 +1798,7 @@ function jumpToBlock(index) {
     const blockElements = document.querySelectorAll('.block-container');
     if (blockElements[index]) {
         const headerHeight = document.querySelector('header')?.getBoundingClientRect().height || 0;
-        const y = blockElements[index].getBoundingClientRect().top + window.scrollY - (document.body.classList.contains('presentation-mode') ? 10 : headerHeight + 10);
+        const y = blockElements[index].getBoundingClientRect().top + window.scrollY - headerHeight - 10;
         window.scrollTo({ top: y, behavior: 'smooth' });
     }
 }
@@ -1789,9 +1871,17 @@ function initRemoteSystem() {
                 if (data.action === 'highlight_block') {
                     updateRemoteHighlight(data.payload.index);
                 }
+                if (data.action === 'sync_lyrics') {
+                    updateRemoteLyrics(data.payload);
+                }
+                if (data.action === 'lyrics_scroll_sync') {
+                    updateRemoteLyricsScroll(data.payload);
+                }
             });
         });
         initRemoteBattery();
+        setInterval(updateRemoteClock, 1000);
+        updateRemoteClock();
     }
 }
 
@@ -2053,5 +2143,96 @@ function toggleRemoteLock() {
         lockScreen.style.display = 'flex';
     } else {
         lockScreen.style.display = 'none';
+    }
+}
+
+function updateRemoteLyrics(data) {
+    const titleEl = document.getElementById('remote-lyrics-title');
+    const contentEl = document.getElementById('remote-lyrics-content');
+    
+    if (titleEl) titleEl.textContent = data.title;
+    if (contentEl) contentEl.textContent = data.lyrics;
+
+    // Feedback visual no botão para avisar que chegou letra nova
+    const btn = document.getElementById('btn-remote-lyrics');
+    if(btn) {
+        btn.style.boxShadow = "0 0 15px #fff";
+        setTimeout(() => btn.style.boxShadow = "none", 1000);
+    }
+}
+
+function toggleRemoteLyrics() {
+    const overlay = document.getElementById('remote-lyrics-overlay');
+    overlay.style.display = (overlay.style.display === 'none') ? 'flex' : 'none';
+}
+
+function adjustRemoteFontSize(change) {
+    const content = document.getElementById('remote-lyrics-content');
+    let current = parseFloat(window.getComputedStyle(content).fontSize);
+    content.style.fontSize = (current + change) + 'px';
+}
+
+let remoteLyricsScrollInterval;
+let isRemoteLyricsScrolling = false;
+let remoteLyricsScrollAccumulator = 0;
+let currentRemoteSpeed = 3;
+
+function updateRemoteLyricsScroll(data) {
+    const syncCheckbox = document.getElementById('remote-lyrics-sync');
+    if (syncCheckbox && !syncCheckbox.checked) {
+        stopRemoteLyricsScroll();
+        return;
+    }
+
+    if (data.active) {
+        startRemoteLyricsScroll(data.speed);
+    } else {
+        stopRemoteLyricsScroll();
+    }
+}
+
+function startRemoteLyricsScroll(speed) {
+    currentRemoteSpeed = speed;
+    if (isRemoteLyricsScrolling) return;
+    
+    isRemoteLyricsScrolling = true;
+    remoteLyricsScrollAccumulator = 0;
+    const content = document.getElementById('remote-lyrics-content');
+    
+    function scroll() {
+        if (!isRemoteLyricsScrolling) return;
+        remoteLyricsScrollAccumulator += currentRemoteSpeed * 0.2;
+        if (remoteLyricsScrollAccumulator >= 1) {
+            const pixels = Math.floor(remoteLyricsScrollAccumulator);
+            if (content) content.scrollTop += pixels;
+            remoteLyricsScrollAccumulator -= pixels;
+        }
+        remoteLyricsScrollInterval = requestAnimationFrame(scroll);
+    }
+    remoteLyricsScrollInterval = requestAnimationFrame(scroll);
+}
+
+function stopRemoteLyricsScroll() {
+    isRemoteLyricsScrolling = false;
+    cancelAnimationFrame(remoteLyricsScrollInterval);
+}
+
+function updateRemoteClock() {
+    const el = document.getElementById('remote-clock');
+    if (el) {
+        const now = new Date();
+        el.textContent = now.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
+function toggleRemoteFullscreen() {
+    if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+            alert(`Erro ao entrar em tela cheia: ${err.message}`);
+        });
+    } else {
+        if (document.exitFullscreen) {
+            document.exitFullscreen();
+        }
     }
 }

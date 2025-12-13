@@ -272,7 +272,7 @@
                 <button type="button" class="action-btn" onclick="toggleLyricsScroll()" id="btn-lyrics-scroll">▶ SCROLL</button>
                 <div style="display:flex; align-items:center; gap:5px; margin-left:10px;">
                     <span style="font-size:0.7rem; color:#888; font-family:'Oxanium';">VEL:</span>
-                    <input type="range" id="lyrics-scroll-speed" min="1" max="10" step="1" value="3" style="width:80px; accent-color:var(--primary); cursor: pointer;" title="Velocidade do Scroll">
+                    <input type="range" id="lyrics-scroll-speed" min="1" max="10" step="1" value="3" style="width:80px; accent-color:var(--primary); cursor: pointer;" title="Velocidade do Scroll" oninput="syncLyricsSpeed()">
                 </div>
                 <div style="flex:1"></div>
                 <button type="button" class="action-btn" style="border-color:#555; color:#888;" onclick="closeLyricsModal()">FECHAR</button>
@@ -319,7 +319,10 @@
 
     <!-- INTERFACE DO CONTROLE REMOTO (CELULAR) -->
     <div id="remote-interface" style="display:none;">
-        <div class="remote-header">M&M REMOTE CONTROL</div>
+        <div class="remote-header">
+            M&M REMOTE CONTROL
+            <div id="remote-clock" style="font-size: 1.2rem; color: #fff; margin-top: 5px; font-weight: bold;">--:--</div>
+        </div>
         <div class="remote-grid">
             <button class="remote-btn" onclick="sendRemote('scroll_toggle')">⏯ PLAY/PAUSE</button>
             <button class="remote-btn panic" onclick="sendRemote('panic')">🚨 PÂNICO</button>
@@ -334,17 +337,36 @@
             <button class="remote-btn" onclick="sendRemote('timer_toggle')">⏯ TIMER</button>
             <button class="remote-btn" onclick="sendRemote('lyrics_scroll')">📜 SCROLL LETRA</button>
             <button class="remote-btn" onclick="sendRemote('reload')">🔄 RECARREGAR</button>
+            <button class="remote-btn" id="btn-remote-lyrics" onclick="toggleRemoteLyrics()">👁 VER LETRA</button>
             <div class="remote-input-group">
                 <input type="text" id="remote-msg-input" placeholder="AVISO PARA O PALCO..." maxlength="30">
                 <button class="remote-btn" onclick="sendRemoteMessage()">ENVIAR</button>
             </div>
-            <button class="remote-btn" onclick="toggleRemoteLock()" style="grid-column: span 2;">🔒 BLOQUEAR TELA</button>
+            <button class="remote-btn" onclick="toggleRemoteFullscreen()">⛶ TELA CHEIA</button>
+            <button class="remote-btn" onclick="toggleRemoteLock()">🔒 BLOQUEAR</button>
             <div id="remote-block-jumper" class="remote-block-jumper" style="grid-column: span 2;">
             </div>
         </div>
         <div class="remote-footer-bar">
             <div id="remote-feedback">CONECTADO</div>
             <div id="remote-battery"></div>
+        </div>
+    </div>
+
+    <!-- OVERLAY DE LETRA NO CONTROLE REMOTO -->
+    <div id="remote-lyrics-overlay" style="display:none;">
+        <div class="remote-lyrics-header">
+            <span id="remote-lyrics-title">AGUARDANDO...</span>
+            <button onclick="toggleRemoteLyrics()" style="background:none; border:none; color:#ff4444; font-size:1.5rem; padding: 0 10px;">✕</button>
+        </div>
+        <div id="remote-lyrics-content">Nenhuma letra carregada. Abra uma música no PC.</div>
+        <div class="remote-lyrics-controls">
+            <div style="display:flex; align-items:center; gap:5px; margin-right:10px;">
+                <input type="checkbox" id="remote-lyrics-sync" checked style="width:20px; height:20px; accent-color:var(--primary);">
+                <label for="remote-lyrics-sync" style="color:#fff; font-family:'Roboto Mono'; font-size:0.8rem;">SYNC</label>
+            </div>
+            <button onclick="adjustRemoteFontSize(-2)">A-</button>
+            <button onclick="adjustRemoteFontSize(2)">A+</button>
         </div>
     </div>
 
