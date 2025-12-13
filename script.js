@@ -1920,6 +1920,8 @@ async function shortenLink(longUrl, accessToken) {
         console.error('Erro ao encurtar o link:', error);
         throw error;
     }
+}
+
 function copyRemoteLink() {
     const linkElement = document.getElementById('remote-link');
     if (linkElement.getAttribute('href') === '#') return alert("Aguarde a geração do link...");
@@ -1952,6 +1954,10 @@ function setupReceiver() {
             case 'blackout': changeTheme('theme-black'); break;
             case 'message': showRemoteMessage(data.payload); break;
             case 'reset_timer': resetTimer(); break;
+            case 'timer_toggle': toggleTimer(); break;
+            case 'lyrics_scroll': toggleLyricsScroll(); break;
+            case 'theme_default': changeTheme('default'); break;
+            case 'reload': window.location.reload(); break;
             case 'jump_to_block': jumpToBlock(data.payload.index); break;
         }
     });
