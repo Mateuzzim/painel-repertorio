@@ -20,15 +20,20 @@
                 <form id="login-form" onsubmit="handleLogin(event)">
                     <div class="form-group">
                         <label class="form-label">USUÁRIO BANDA</label>
-                        <input type="text" id="username" class="input-field" placeholder="ADMIN" required>
+                        <input type="text" id="username" name="username" class="input-field" placeholder="ADMIN" required>
                     </div>
                     
                     <div class="form-group">
                         <label class="form-label">SENHA DE ACESSO</label>
                         <div class="password-wrapper">
-                            <input type="password" id="password" class="input-field" placeholder="••••••" required>
+                            <input type="password" id="password" name="password" class="input-field" placeholder="••••••" required>
                             <span class="password-toggle" onclick="togglePassword('password', this)">👁</span>
                         </div>
+                    </div>
+
+                    <div style="display: flex; align-items: center; margin-bottom: 15px;">
+                        <input type="checkbox" id="remember-me" style="width: auto; margin-right: 10px; accent-color: var(--primary); cursor: pointer;">
+                        <label for="remember-me" style="color: #888; font-family: 'Roboto Mono'; font-size: 0.8rem; cursor: pointer;">LEMBRAR-ME</label>
                     </div>
 
                     <button type="submit" class="action-btn" style="width: 100%; margin-top: 10px;">
@@ -79,8 +84,10 @@
     </div>
 
     <script>
-        // Limpa a sessão anterior sempre que abrir a tela de login
-        localStorage.removeItem('isAuthenticated');
+        // Verifica se já existe uma sessão salva e redireciona automaticamente
+        if (localStorage.getItem('isAuthenticated') === 'true' || sessionStorage.getItem('isAuthenticated') === 'true') {
+            window.location.href = 'repertorio.html';
+        }
         const USERS_KEY = 'repertorio_users_db';
 
         function toggleView() {
@@ -163,10 +170,19 @@
             const userInput = document.getElementById('username').value;
             const passwordInput = document.getElementById('password');
             const password = passwordInput.value;
+            const rememberMe = document.getElementById('remember-me').checked;
+
+            const setSession = () => {
+                if (rememberMe) {
+                    localStorage.setItem('isAuthenticated', 'true');
+                } else {
+                    sessionStorage.setItem('isAuthenticated', 'true');
+                }
+            };
             
             // 1. Verifica Admin Padrão
             if (userInput.toLowerCase() === 'admin' && password === 'admin') {
-                localStorage.setItem('isAuthenticated', 'true');
+                setSession();
                 window.location.href = 'repertorio.html';
                 return;
             }
@@ -181,7 +197,7 @@
                 currentConfig.name = foundUser.bandName;
                 localStorage.setItem('repertorio_config', JSON.stringify(currentConfig));
 
-                localStorage.setItem('isAuthenticated', 'true');
+                setSession();
                 window.location.href = 'repertorio.html';
             } else {
                 alert("ACESSO NEGADO: Senha incorreta.");

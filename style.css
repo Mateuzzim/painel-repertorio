@@ -125,11 +125,17 @@ h1::after {
     display: none; /* Oculto no Desktop */
 }
 
-/* BOTÃO CONFIG NO TOPO */
-.config-btn-top {
+/* BOTÕES NO TOPO (WRAPPER) */
+.top-controls-wrapper {
     position: absolute;
     top: 20px;
     right: 20px;
+    display: flex;
+    gap: 10px;
+    z-index: 110;
+}
+
+.top-icon-btn {
     background: rgba(0, 0, 0, 0.3);
     border: 1px solid var(--primary);
     color: var(--primary);
@@ -138,17 +144,53 @@ h1::after {
     height: 40px;
     border-radius: 4px;
     cursor: pointer;
-    z-index: 110;
     display: flex;
+    position: relative;
     align-items: center;
     justify-content: center;
     transition: 0.3s;
 }
 
-.config-btn-top:hover {
+.top-icon-btn:hover {
     background: var(--primary);
     color: #000;
     box-shadow: 0 0 10px var(--primary);
+}
+
+/* INDICADOR DE STATUS (BOLINHA) */
+.status-dot {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: #ff4444; /* Vermelho (Desconectado) */
+    box-shadow: 0 0 5px #ff4444;
+    transition: all 0.3s;
+}
+
+.status-dot.connected {
+    background-color: #00ff00; /* Verde (Conectado) */
+    box-shadow: 0 0 8px #00ff00;
+}
+
+@keyframes blink {
+    0% { opacity: 1; }
+    50% { opacity: 0.4; }
+    100% { opacity: 1; }
+}
+
+.status-dot.blinking {
+    background-color: #ffae00; /* Laranja (Aguardando) */
+    box-shadow: 0 0 8px #ffae00;
+    animation: blink 1s infinite;
+}
+
+.status-dot.receiving {
+    background-color: #fff; /* Branco (Recebendo Dados) */
+    box-shadow: 0 0 10px #fff;
+    transform: scale(1.5);
 }
 
 /* CONTAINER DOS BLOCOS */
@@ -656,7 +698,7 @@ body.theme-black {
         color: #000;
     }
     
-    .config-btn-top {
+    .top-controls-wrapper {
         right: 70px; /* Ao lado do menu hambúrguer no mobile */
     }
 
@@ -710,7 +752,7 @@ body.presentation-mode .stats-counter,
 body.presentation-mode .setlist-controls,
 body.presentation-mode footer,
 body.presentation-mode .menu-toggle-btn,
-body.presentation-mode .config-btn-top,
+body.presentation-mode .top-controls-wrapper,
 body.presentation-mode .header-controls .action-btn:not(#btn-stage-mode),
 body.presentation-mode .control-btn:not(.btn-toggle),
 body.presentation-mode .block-footer,
@@ -812,10 +854,10 @@ body.presentation-mode #btn-stage-mode:hover {
     z-index: 9999;
     background: rgba(10, 10, 10, 0.95);
     border: 1px solid var(--primary);
-    padding: 15px 25px;
+    padding: 8px 15px;
     border-radius: 12px;
     align-items: center;
-    gap: 15px;
+    gap: 8px;
     box-shadow: 0 0 30px rgba(0,0,0,0.8), inset 0 0 20px rgba(0,0,0,0.5);
     backdrop-filter: blur(10px);
 }
@@ -829,11 +871,11 @@ body.presentation-mode .autoscroll-controls {
     border: 1px solid var(--primary);
     color: var(--primary);
     font-weight: bold;
-    width: 45px;
-    height: 45px;
+    width: 35px;
+    height: 35px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 1.4rem;
+    font-size: 1rem;
     display: flex; align-items: center; justify-content: center;
     transition: all 0.2s;
     box-shadow: 0 0 5px rgba(0,0,0,0.5);
@@ -853,8 +895,8 @@ body.presentation-mode .autoscroll-controls {
 .autoscroll-controls input[type=range] {
     -webkit-appearance: none;
     appearance: none;
-    width: 180px;
-    height: 8px;
+    width: 120px;
+    height: 6px;
     background: #222;
     border-radius: 4px;
     outline: none;
@@ -865,35 +907,35 @@ body.presentation-mode .autoscroll-controls {
 .autoscroll-controls input[type=range]::-webkit-slider-thumb {
     -webkit-appearance: none;
     appearance: none;
-    width: 24px;
-    height: 24px;
+    width: 16px;
+    height: 16px;
     background: var(--primary);
     cursor: pointer;
     border-radius: 50%;
     box-shadow: 0 0 10px var(--primary);
     border: 2px solid #fff;
-    margin-top: -8px;
+    margin-top: -6px;
 }
 
 .autoscroll-controls span {
     font-family: 'Oxanium';
     color: #fff;
-    font-size: 1.2rem;
+    font-size: 0.9rem;
     font-weight: bold;
-    min-width: 90px;
+    min-width: 70px;
     text-align: center;
     text-shadow: 0 0 5px var(--primary);
     background: rgba(0,0,0,0.5);
-    padding: 8px 12px;
+    padding: 5px 8px;
     border-radius: 6px;
     border: 1px solid #333;
 }
 
 /* Play Button Special Style */
 #btn-scroll-toggle {
-    width: 50px;
-    height: 50px;
-    font-size: 1.6rem;
+    width: 40px;
+    height: 40px;
+    font-size: 1.2rem;
     border-width: 2px;
 }
 

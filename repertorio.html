@@ -13,7 +13,7 @@
         // Verifica se o usuário está autenticado
         // Se for modo remoto (celular), pula a autenticação
         const urlParams = new URLSearchParams(window.location.search);
-        if (!urlParams.has('remote') && localStorage.getItem('isAuthenticated') !== 'true') {
+        if (!urlParams.has('remote') && localStorage.getItem('isAuthenticated') !== 'true' && sessionStorage.getItem('isAuthenticated') !== 'true') {
             window.location.href = 'index.html';
         }
     </script>
@@ -22,7 +22,13 @@
 
     <header>
         <button type="button" id="btn-menu-toggle" class="menu-toggle-btn" onclick="toggleMobileMenu()">☰</button>
-        <button type="button" class="config-btn-top" onclick="openConfigModal()" title="CONFIGURAÇÕES">⚙</button>
+        <div class="top-controls-wrapper">
+            <button type="button" class="top-icon-btn" onclick="openRemoteConnectModal()" title="CONECTAR CELULAR">
+                📡
+                <span id="remote-status-indicator" class="status-dot"></span>
+            </button>
+            <button type="button" class="top-icon-btn" onclick="openConfigModal()" title="CONFIGURAÇÕES">⚙</button>
+        </div>
         
         <div class="brand-wrapper">
             <h1 id="band-name-display" data-text="MENDES & MATEUS">MENDES <span>&</span> MATEUS</h1>
@@ -207,7 +213,7 @@
             <div class="hud-center" id="footer-text-display">/// MENDES & MATEUS REPERTÓRIO ///</div>
             <div class="hud-right">
                 V.2.5 [STABLE]
-                <button type="button" onclick="logout()" style="background:none; border:none; color:#ff4444; font-family:'Oxanium'; font-weight:bold; cursor:pointer; margin-left:15px; text-transform:uppercase;">[ SAIR ]</button>
+                <button type="button" onclick="localStorage.removeItem('isAuthenticated'); sessionStorage.removeItem('isAuthenticated'); window.location.href='index.html'" style="background:none; border:none; color:#ff4444; font-family:'Oxanium'; font-weight:bold; cursor:pointer; margin-left:15px; text-transform:uppercase;">[ SAIR ]</button>
             </div>
         </div>
     </footer>

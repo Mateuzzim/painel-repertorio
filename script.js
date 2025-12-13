@@ -1802,6 +1802,19 @@ function openRemoteConnectModal() {
     const status = document.getElementById('remote-status');
     const remoteLink = document.getElementById('remote-link');
     
+
+    // Verifica se a biblioteca QR Code carregou
+    if (typeof QRCode === 'undefined') {
+        alert("ERRO: Biblioteca QR Code não encontrada. Verifique sua conexão com a internet.");
+        return;
+    }
+
+    const indicator = document.getElementById('remote-status-indicator');
+    if (indicator && (!conn || !conn.open)) {
+        indicator.classList.remove('connected');
+        indicator.classList.add('blinking');
+    }
+
     modal.style.display = 'flex';
     qrContainer.innerHTML = '';
     remoteLink.textContent = '';
@@ -1810,13 +1823,47 @@ function openRemoteConnectModal() {
     status.style.color = 'var(--secondary)';
 
     const setupElements = (id) => {
-        const url = `${window.location.href.split('?')[0]}?remote=${id}`;
-        new QRCode(qrContainer, {
-            text: url,
-            width: 200,
-            height: 200
-        });
-        remoteLink.href = url;
+        if (window.location.protocol === 'file:') {
+            alert("ATENÇÃO: O sistema está rodando como arquivo local. O QR Code pode não funcionar em outro dispositivo. Recomenda-se usar um servidor local (Live Server).");
+        }
+        let url = `${window.location.href.split('?')[0]}?remote=${id}`;
+        try {
+            new QRCode(qrContainer, {
+                text: url,
+                width: 200,
+                height: 200
+            });
+        } catch (e) {
+            console.error("Erro QR Code:", e);
+            status.textContent = "ERRO AO GERAR QR";
+            status.style.color = "red";
+            return;
+        }
+
+        // Encurtar o link usando a API do Bitly
+        const bitlyToken = 'YOUR_BITLY_ACCESS_TOKEN'; // Substitua pelo seu token
+        if (bitlyToken !== 'YOUR_BITLY_ACCESS_TOKEN') {
+            shortenLink(url, bitlyToken)
+                .then(shortenedLink => {
+                    remoteLink.href = shortenedLink;
+                    remoteLink.textContent = shortenedLink;
+                })
+                .catch(error => {
+                    console.error("Erro ao encurtar link:", error);
+                    remoteLink.href = url;
+                    remoteLink.textContent = "Abrir Controle Remoto em Nova Aba";
+                    status.textContent = "PRONTO PARA CONEXÃO (SEM LINK CURTO)";
+                });
+        } else {
+            console.warn("Token do Bitly não configurado. Usando link longo.");
+            remoteLink.href = url;
+            remoteLink.textContent = "Abrir Controle Remoto em Nova Aba";
+        }
+
+
+
+
+
         remoteLink.textContent = "Abrir Controle Remoto em Nova Aba";
         status.textContent = "PRONTO PARA CONEXÃO";
     };
@@ -1826,11 +1873,21 @@ function openRemoteConnectModal() {
         peer.on('open', (id) => {
             setupElements(id);
         });
+        
+        peer.on('error', (err) => {
+            console.error("PeerJS Erro:", err);
+            status.textContent = "ERRO DE CONEXÃO (P2P)";
+            status.style.color = "red";
+        });
 
         peer.on('connection', (c) => {
             conn = c;
             status.textContent = "CELULAR CONECTADO!";
             status.style.color = "#0f0";
+            if (indicator) {
+                indicator.classList.remove('blinking');
+                indicator.classList.add('connected');
+            }
             setupReceiver();
         });
     } else {
@@ -1839,6 +1896,30 @@ function openRemoteConnectModal() {
     }
 }
 
+async function shortenLink(longUrl, accessToken) {
+    const apiUrl = 'https://api-ssl.bitly.com/v4/shorten';
+
+    const headers = {
+        'Authorization': `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+    };
+
+    const data = {
+        long_url: longUrl,
+    };
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: headers,
+            body: JSON.stringify(data),
+        });
+        const json = await response.json();
+        return json.link || longUrl; // Retorna o link original em caso de falha
+    } catch (error) {
+        console.error('Erro ao encurtar o link:', error);
+        throw error;
+    }
 function copyRemoteLink() {
     const linkElement = document.getElementById('remote-link');
     if (linkElement.getAttribute('href') === '#') return alert("Aguarde a geração do link...");
@@ -1853,6 +1934,12 @@ function copyRemoteLink() {
 
 function setupReceiver() {
     conn.on('data', (data) => {
+        const indicator = document.getElementById('remote-status-indicator');
+        if (indicator) {
+            indicator.classList.add('receiving');
+            setTimeout(() => indicator.classList.remove('receiving'), 200);
+        }
+
         console.log("Comando recebido:", data);
         switch(data.action) {
             case 'scroll_toggle': toggleAutoScroll(); break;
@@ -1866,6 +1953,14 @@ function setupReceiver() {
             case 'message': showRemoteMessage(data.payload); break;
             case 'reset_timer': resetTimer(); break;
             case 'jump_to_block': jumpToBlock(data.payload.index); break;
+        }
+    });
+
+    conn.on('close', () => {
+        const indicator = document.getElementById('remote-status-indicator');
+        if (indicator) {
+            indicator.classList.remove('connected');
+            indicator.classList.remove('blinking');
         }
     });
 }
@@ -1942,6 +2037,7 @@ function updateRemoteHighlight(index) {
 
 // Inicializa verificação remota
 initRemoteSystem();
+
 
 function toggleRemoteLock() {
     const lockScreen = document.getElementById('remote-lock-screen');
